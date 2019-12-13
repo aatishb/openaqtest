@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!-- Load in libraries here -->
+  <link href="https://fonts.googleapis.com/css?family=Open Sans" rel="stylesheet">
+  <script src="https://unpkg.com/vue"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="style.css">
+
+</head>
+
+<body>
+
+<div id="root" class="container"> <!-- Vue can only access things contained within this div -->
+
+  <h2>Country</h2>
+
+  <div v-if="countries.length > 0">
+
+    <select v-model="country" @change="loadData('https://api.openaq.org/v1/cities?limit=10000&country=' + country.code, loadCities)">
+      <option v-for="country in countries" :value="country">
+        {{ country.name }}
+      </option>
+    </select>
+
+    <div v-if="country">{{country}}</div>
+
+    <div v-if="cities.length > 0">
+      <h2>City</h2>
+
+      <select v-model="city" @change="loadData('https://api.openaq.org/v1/locations?limit=10000&country=' + country.code + '&city=' + city.name, loadLocations)">
+        <option v-for="city in cities" :value="city">
+          {{ city.name }}
+        </option>
+      </select>
+
+      <div v-if="city">{{city}}</div>
+
+      <div v-if="locations.length > 0">
+        <h2>Location</h2>
+
+        <select v-model="location" @change="parameters = location.parameters">
+          <option v-for="location in locations" :value="location">
+            {{ location.location }}
+          </option>
+        </select>
+
+        <div v-if="location">{{location}}</div>
+
+        <div v-if="parameters.length > 0">
+          <h2>Parameters</h2>
+
+          <select v-model="parameter" @change="loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + country.code + '&city=' + city.name + '&location=' + location.location + '&parameter=' + parameter + '&date_from=' + startDate, getAQData)">
+            <option v-for="parameter in parameters" :value="parameter">
+              {{ parameter }}
+            </option>
+          </select>
+
+          <div v-if="AQdata.length > 0">
+            <!--
+            {{AQdata}}
+            -->
+            <graph :traces="[trace]" :layout="layout"></graph>
+
+          </div>
+
+        </div>
+
+
+      </div>
+
+
+
+    </div>
+
+  </div>
+
+</div>
+
+<script src="vue-definitions.js"></script>
+
+</body>
+</html>
