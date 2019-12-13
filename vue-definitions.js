@@ -52,6 +52,7 @@ var app = new Vue({
 
       this.countries = JSON.parse(data).results
         .filter(e => e.name !== undefined)
+        .filter(e => e.count > 20000)
         .sort((a,b) => a.name > b.name);
 
     },
@@ -120,13 +121,13 @@ var app = new Vue({
     date: NaN,
     startData: NaN,
     countries: [],
-    country: NaN,
+    country: '',
     cities: [],
-    city: NaN,
+    city: '',
     locations: [],
-    location: NaN,
+    location: '',
     parameters: [],
-    parameter: NaN,
+    parameter: '',
     AQdata: [],
     trace: {},
     layout: {}
