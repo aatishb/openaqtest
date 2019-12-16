@@ -16,7 +16,7 @@
 
   <div v-if="countries.length > 0">
 
-    <select v-model="country" @change="loadData('https://api.openaq.org/v1/cities?limit=10000&country=' + country.code, loadCities)">
+    <select v-model="country" @change="requestCityData">
         <option disabled value="">Select a country</option>
         <option v-for="country in countries" :value="country">
         {{ country.name }}
@@ -25,7 +25,7 @@
 
     <div v-if="cities.length > 0">
 
-      <select v-model="city" @change="loadData('https://api.openaq.org/v1/locations?limit=10000&country=' + country.code + '&city=' + city.name, loadLocations)">
+      <select v-model="city" @change="requestLocationData">
         <option disabled value="">Select a city</option>
         <option v-for="city in cities" :value="city">
           {{ city.name }}
@@ -34,27 +34,40 @@
 
       <div v-if="locations.length > 0">
 
-        <select v-model="location" @change="parameters = location.parameters">
+        <!--
+        <select v-model="location" @change="requestParameterData">
         <option disabled value="">Select a location</option>
           <option v-for="location in locations" :value="location">
             {{ location.location }}
           </option>
         </select>
+        -->
 
-        <div v-if="parameters.length > 0">
+        <ul>
+          <li v-for="location in locations" style="list-style-type: none;">
+            <input type="checkbox" :id="location" :value="location" v-model="selectedLocations" @change="requestAQData(location)">
+            <label :for="location">{{location.location}}</label>
+          </li>
+        </ul>
 
-          <select v-model="parameter" @change="loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + country.code + '&city=' + city.name + '&location=' + location.location + '&parameter=' + parameter + '&date_from=' + startDate, getAQData)">
+        <div v-if="selectedLocations.length > 0">
+
+          <p>
+            Showing
+            <select v-model="parameter" @change="reloadData(parameter)">
                 <option disabled value="">Select a parameter</option>
                 <option v-for="parameter in parameters" :value="parameter">
               {{ parameter }}
-            </option>
-          </select>
+                </option>
+            </select>
+             data for {{ selectedLocations.map(e => e.location) }}
+          </p>
 
           <div v-if="AQdata.length > 0">
             <!--
             {{AQdata}}
             -->
-            <graph :traces="[trace]" :layout="layout"></graph>
+            <graph :traces="traces" :layout="layout"></graph>
 
           </div>
 

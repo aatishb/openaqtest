@@ -75,19 +75,81 @@ var app = new Vue({
 
     },
 
+    requestCityData() {
+      this.loadData('https://api.openaq.org/v1/cities?limit=10000&country=' + this.country.code, this.loadCities);
+    },
+
+    requestLocationData() {
+      this.loadData('https://api.openaq.org/v1/locations?limit=10000&country=' + this.country.code + '&city=' + this.city.name, this.loadLocations);
+    },
+
+    requestAQData(location) {
+
+      if (this.selectedLocations.includes(location)) {
+
+        this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + location.location + '&parameter=pm25&date_from=' + this.startDate, this.getAQData);
+        for (let p of location.parameters) {
+          if (!this.parameters.includes(p)) {
+            this.parameters.push(p);
+          }
+        }
+
+      } else {
+
+        // remove trace for this location
+        this.traces = this.traces.filter(e => e.name !== location.location);
+        console.log(location.location, ' removed from trace');
+
+      }
+
+    },
+
+    reloadData(parameter) {
+
+      console.log('reloading data for ', parameter);
+
+      this.traces = [];
+
+      let locations = this.selectedLocations.map(e => e.location);
+      for (let loc of locations) {
+        this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + loc + '&parameter=' + parameter + '&date_from=' + this.startDate, this.getAQData);
+      }
+
+    },
+
     getAQData(data) {
-      this.AQdata = JSON.parse(data).results;
 
-      this.trace = {
-        x: this.AQdata.map(e => e.date.local),
-        y: this.AQdata.map(e => e.value),
-        type: 'scatter',
-        mode: 'lines',
-      };
+      this.AQdata = JSON.parse(data).results
+        .filter(e => e.value >= 0);
+
+      if (this.AQdata.length > 0) {
+
+        let location = this.AQdata[0].location;
+        let myTrace = {
+          x: this.AQdata.map(e => e.date.local),
+          y: this.AQdata.map(e => e.value),
+          name: location,
+          type: 'scatter',
+          mode: 'points',
+        };
+
+        this.traces.push(myTrace);
+
+      }
+
+    },
 
 
-      this.layout = {
+  },
 
+  computed: {
+    parameters() {
+      return [...new Set(this.selectedLocations.map(e => e.parameters).reduce((a,b) => [...a, ...b]))];
+    },
+
+    layout() {
+
+      return {
         xaxis: {
           title: 'Date / Time',
         },
@@ -103,11 +165,16 @@ var app = new Vue({
         },
 
         showlegend: false,
+
       };
+    }
+  },
 
+  watch: {
 
-    },
+    selectedLocations: function() {
 
+    }
 
   },
 
@@ -126,12 +193,10 @@ var app = new Vue({
     city: '',
     locations: [],
     location: '',
-    parameters: [],
-    parameter: '',
+    parameter: 'pm25',
     AQdata: [],
-    trace: {},
-    layout: {}
-
+    traces: [],
+    selectedLocations: []
   }
 
 });
