@@ -55,7 +55,7 @@
 
           <p>
             Showing
-            <select v-model="parameter" @change="reloadData(parameter)">
+            <select v-model="parameter">
                 <option disabled value="">Select a parameter</option>
                 <option v-for="parameter in parameters" :value="parameter">
               {{ parameter }}

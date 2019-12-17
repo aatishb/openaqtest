@@ -8,7 +8,7 @@ Vue.component('graph', {
   methods: {
 
     makeGraph() {
-      console.log('making graph');
+      console.log('updating graph');
 
       let smoothedTraces = [];
 
@@ -36,8 +36,6 @@ Vue.component('graph', {
         y = (1 - this.smoothing) * arr[i] + this.smoothing * y;
         smoothedArr.push(y)
       }
-
-      console.log(arr, smoothedArr);
 
       return smoothedArr;
     }
@@ -85,34 +83,23 @@ var app = new Vue({
 
     loadCountries(data) {
 
-      this.traces = [];
-
       this.countries = JSON.parse(data).results
         .filter(e => e.name !== undefined)
         .filter(e => e.count > 20000)
         .sort((a,b) => a.name > b.name);
 
-      this.cities = [];
-      this.locations = [];
-
     },
 
     loadCities(data) {
-
-      this.traces = [];
 
       this.cities = JSON.parse(data).results
         .filter(e => e.name !== undefined)
         .filter(e => e.count > 20000)
         .sort((a,b) => a.name > b.name);
 
-      this.locations = [];
-
     },
 
     loadLocations(data) {
-
-      this.traces = [];
 
       this.locations = JSON.parse(data).results
         .filter(e => e.location !== undefined)
@@ -120,42 +107,40 @@ var app = new Vue({
         .sort((a,b) => a.location > b.location);
 
       for (let location of this.locations) {
-        this.requestAQData(location);
+        this.requestAQData(location, 'pm25');
       }
 
     },
 
     requestCityData() {
+
+      this.traces = [];
+      this.cities = [];
+      this.city = '';
+      this.locations = [];
+      this.location = '';
+
       this.loadData('https://api.openaq.org/v1/cities?limit=10000&country=' + this.country.code, this.loadCities);
     },
 
     requestLocationData() {
+
+      this.traces = [];
+      this.locations = [];
+      this.location = '';
+
       this.loadData('https://api.openaq.org/v1/locations?limit=10000&country=' + this.country.code + '&city=' + this.city.name, this.loadLocations);
     },
 
-    requestAQData(location) {
+    requestAQData(location, parameter) {
 
-      this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + location.location + '&parameter=pm25&date_from=' + this.startDate, this.getAQData);
+      this.traces = [];
 
-      for (let p of location.parameters) {
-        if (!this.parameters.includes(p)) {
-          this.parameters.push(p);
-        }
-      }
+      this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + location.location + '&parameter=' + parameter + '&date_from=' + this.startDate, this.getAQData);
 
     },
 
     reloadData(parameter) {
-
-      console.log('reloading data for ', parameter);
-
-      this.traces = [];
-
-      let locations = this.locations.filter(e => e.parameters.includes(parameter)).map(e => e.location);
-
-      for (let loc of locations) {
-        this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + loc + '&parameter=' + parameter + '&date_from=' + this.startDate, this.getAQData);
-      }
 
     },
 
@@ -187,10 +172,10 @@ var app = new Vue({
   computed: {
 
     parameters() {
-      if (this.locations.length > 0) {
-        return [...new Set(this.locations.map(e => e.parameters).reduce((a,b) => [...a, ...b]))];
+      if (this.location !== '') {
+        return this.location.parameters;
       } else {
-        return ['pm25'];
+        return [];
       }
     },
 
@@ -291,7 +276,17 @@ var app = new Vue({
   },
 
   watch: {
+    parameter() {
+      for (let location of this.locations) {
+        this.requestAQData(location, this.parameter);
+      }
+    },
 
+    location() {
+      if (this.location !== '') {
+        this.parameter = this.location.parameters.includes('pm25') ? 'pm25' : this.location.parameters[0];
+      }
+    }
   },
 
   mounted() {
@@ -309,10 +304,10 @@ var app = new Vue({
     city: '',
     locations: [],
     location: '',
-    parameter: 'pm25',
     traces: [],
     smoothingOptions: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-    smoothing: 0.7
+    smoothing: 0.7,
+    parameter: 'pm25',
   }
 
 });
