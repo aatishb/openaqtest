@@ -1,15 +1,46 @@
 // custom graph component
 Vue.component('graph', {
 
-  props: ['traces', 'layout'],
+  props: ['traces', 'layout', 'smoothing'],
 
   template: '<div ref="graph" class="graph" style="height: 600px;"></div>',
 
   methods: {
 
     makeGraph() {
-      Plotly.newPlot(this.$refs.graph, this.traces, this.layout);
+      console.log('making graph');
+
+      let smoothedTraces = [];
+
+      for (let trace of this.traces) {
+        smoothedTraces.push({
+          x: trace.x,
+          y: this.smooth(trace.y),
+          name: trace.name,
+          type: trace.type,
+          mode: trace.mode,
+          fill: trace.fill,
+          fillcolor: trace.fillcolor,
+          line: trace.line
+        });
+      }
+
+      Plotly.newPlot(this.$refs.graph, smoothedTraces, this.layout);
     },
+
+    smooth(arr) {
+      let y = arr[0];
+      let smoothedArr = [];
+
+      for (let i = 0; i < arr.length; i++) {
+        y = (1 - this.smoothing) * arr[i] + this.smoothing * y;
+        smoothedArr.push(y)
+      }
+
+      console.log(arr, smoothedArr);
+
+      return smoothedArr;
+    }
 
   },
 
@@ -19,6 +50,10 @@ Vue.component('graph', {
 
   watch: {
     traces() {
+      this.makeGraph();
+    },
+
+    smoothing() {
       this.makeGraph();
     }
   }
@@ -50,23 +85,34 @@ var app = new Vue({
 
     loadCountries(data) {
 
+      this.traces = [];
+
       this.countries = JSON.parse(data).results
         .filter(e => e.name !== undefined)
         .filter(e => e.count > 20000)
         .sort((a,b) => a.name > b.name);
 
+      this.cities = [];
+      this.locations = [];
+
     },
 
     loadCities(data) {
+
+      this.traces = [];
 
       this.cities = JSON.parse(data).results
         .filter(e => e.name !== undefined)
         .filter(e => e.count > 20000)
         .sort((a,b) => a.name > b.name);
 
+      this.locations = [];
+
     },
 
     loadLocations(data) {
+
+      this.traces = [];
 
       this.locations = JSON.parse(data).results
         .filter(e => e.location !== undefined)
@@ -135,7 +181,6 @@ var app = new Vue({
       }
 
     },
-
 
   },
 
@@ -265,7 +310,9 @@ var app = new Vue({
     locations: [],
     location: '',
     parameter: 'pm25',
-    traces: []
+    traces: [],
+    smoothingOptions: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+    smoothing: 0.7
   }
 
 });
