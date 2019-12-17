@@ -62,31 +62,20 @@
                 </option>
             </select>
              data for {{ location.location }} with a smoothing of
-
                 <select v-model="smoothing">
                   <option v-for="s in smoothingOptions">{{s}}</option>
                 </select>
-
-
           </p>
 
           <div v-if="traces.length > 0">
 
-            <graph :traces="[...traces.filter(e => e.name == location.location), ...backgroundTrace]" :layout="layout" :smoothing="smoothing"></graph>
+            <graph :traces="[ ...backgroundTrace, ...traces.filter(e => e.name == location.location)]" :layout="layout" :smoothing="smoothing"></graph>
 
           </div>
-
         </div>
-
-
       </div>
-
-
-
     </div>
-
   </div>
-
 </div>
 
 <script src="vue-definitions.js"></script>

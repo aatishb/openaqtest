@@ -226,6 +226,7 @@ var app = new Vue({
 
         let times = Object.keys(allTrace).sort((a,b) => new Date(b) - new Date(a));
         let x = [];
+        let n_arr = [];
         let y_low = [];
         let y_high = [];
 
@@ -238,26 +239,37 @@ var app = new Vue({
           let stddev = Math.sqrt(variance);
           let stderr = stddev/Math.sqrt(n);
 
-          if (stderr > 0) {
-            x.push(t);
-            y_low.push(Math.max(mean - 1.96 * stderr,0));
-            y_high.push(Math.max(mean + 1.96 * stderr,0));
-          }
+          n_arr.push(n);
+          x.push(t);
+          y_low.push(Math.max(mean - 1.96 * stderr,0));
+          y_high.push(Math.max(mean + 1.96 * stderr,0));
+
         }
 
 
         return [
           {
             x: x,
-            y: y_high,
+            y: this.parameter == 'pm25' ? x.map(e => 25) : [],
+            type: "scatter",
+            mode: "lines",
+            fill: "tozeroy",
+            name: "WHO PM 2.5 daily average guideline",
+            fillcolor: "rgba(50, 170, 50, 0.3)",
+            line: {color: "transparent"},
+            hoverinfo: 'none'
+          },
+          {
+            x: x.filter((e,i) => n_arr[i] > 1),
+            y: y_high.filter((e,i) => n_arr[i] > 1),
             name: 'Upper Bound',
             type: 'scatter',
             mode: 'lines',
             line: {color: "transparent"}
           },
           {
-            x: x,
-            y: y_low,
+            x: x.filter((e,i) => n_arr[i] > 1),
+            y: y_low.filter((e,i) => n_arr[i] > 1),
             name: 'Lower Bound',
             type: 'scatter',
             mode: 'lines',
