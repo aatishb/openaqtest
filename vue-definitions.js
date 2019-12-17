@@ -70,8 +70,12 @@ var app = new Vue({
 
       this.locations = JSON.parse(data).results
         .filter(e => e.location !== undefined)
-        .filter(e => Math.abs(new Date(e.lastUpdated) - this.date) < 14*24*60*60*1000)
+        .filter(e => Math.abs(new Date(e.lastUpdated) - this.date) < 7*24*60*60*1000)
         .sort((a,b) => a.location > b.location);
+
+      for (let location of this.locations) {
+        this.requestAQData(location);
+      }
 
     },
 
@@ -85,21 +89,12 @@ var app = new Vue({
 
     requestAQData(location) {
 
-      if (this.selectedLocations.includes(location)) {
+      this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + location.location + '&parameter=pm25&date_from=' + this.startDate, this.getAQData);
 
-        this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + location.location + '&parameter=pm25&date_from=' + this.startDate, this.getAQData);
-        for (let p of location.parameters) {
-          if (!this.parameters.includes(p)) {
-            this.parameters.push(p);
-          }
+      for (let p of location.parameters) {
+        if (!this.parameters.includes(p)) {
+          this.parameters.push(p);
         }
-
-      } else {
-
-        // remove trace for this location
-        this.traces = this.traces.filter(e => e.name !== location.location);
-        console.log(location.location, ' removed from trace');
-
       }
 
     },
@@ -110,7 +105,8 @@ var app = new Vue({
 
       this.traces = [];
 
-      let locations = this.selectedLocations.map(e => e.location);
+      let locations = this.locations.filter(e => e.parameters.includes(parameter)).map(e => e.location);
+
       for (let loc of locations) {
         this.loadData('https://api.openaq.org/v1/measurements?limit=10000&country=' + this.country.code + '&city=' + this.city.name + '&location=' + loc + '&parameter=' + parameter + '&date_from=' + this.startDate, this.getAQData);
       }
@@ -119,22 +115,23 @@ var app = new Vue({
 
     getAQData(data) {
 
-      this.AQdata = JSON.parse(data).results
+      let AQdata = JSON.parse(data).results
         .filter(e => e.value >= 0);
 
-      if (this.AQdata.length > 0) {
+      if (AQdata.length > 0) {
 
-        let location = this.AQdata[0].location;
+        let location = AQdata[0].location;
         let myTrace = {
-          x: this.AQdata.map(e => e.date.local),
-          y: this.AQdata.map(e => e.value),
+          x: AQdata.map(e => e.date.local),
+          y: AQdata.map(e => e.value),
           name: location,
           type: 'scatter',
-          mode: 'points',
+          mode: 'lines',
+          line: {color: '#17BECF'}
         };
 
         this.traces.push(myTrace);
-
+        console.log('downloaded data for ', location);
       }
 
     },
@@ -143,8 +140,13 @@ var app = new Vue({
   },
 
   computed: {
+
     parameters() {
-      return [...new Set(this.selectedLocations.map(e => e.parameters).reduce((a,b) => [...a, ...b]))];
+      if (this.locations.length > 0) {
+        return [...new Set(this.locations.map(e => e.parameters).reduce((a,b) => [...a, ...b]))];
+      } else {
+        return ['pm25'];
+      }
     },
 
     layout() {
@@ -155,7 +157,7 @@ var app = new Vue({
         },
 
         yaxis: {
-          title: this.AQdata[0].parameter,
+          title: this.parameter,
          },
 
         font: {
@@ -167,20 +169,89 @@ var app = new Vue({
         showlegend: false,
 
       };
+    },
+
+    backgroundTrace() {
+
+      let allTrace = {};
+
+      if (this.traces.length > 0) {
+        for (let trace of this.traces) {
+
+          // calculate standard deviation of traces
+          let times = trace.x;
+          let vals = trace.y;
+
+          for (let i = 0; i < times.length; i++) {
+            let t = times[i];
+            let y = vals[i];
+
+            if (Object.keys(allTrace).includes(t)) {
+              allTrace[t].push(y);
+            } else {
+              allTrace[t] = [y];
+            }
+          }
+        }
+
+        let times = Object.keys(allTrace).sort((a,b) => new Date(b) - new Date(a));
+        let x = [];
+        let y_low = [];
+        let y_high = [];
+
+        for (let t of times) {
+
+          let n = allTrace[t].length;
+          let mean = allTrace[t].reduce((a,b) => a + b)/n ;
+
+          let variance = allTrace[t].map(e => e - mean).map(e => e*e).reduce((a,b) => a + b);
+          let stddev = Math.sqrt(variance);
+          let stderr = stddev/Math.sqrt(n);
+
+          if (stderr > 0) {
+            x.push(t);
+            y_low.push(Math.max(mean - 1.96 * stderr,0));
+            y_high.push(Math.max(mean + 1.96 * stderr,0));
+          }
+        }
+
+
+        return [
+          {
+            x: x,
+            y: y_high,
+            name: 'Upper Bound',
+            type: 'scatter',
+            mode: 'lines',
+            line: {color: "transparent"}
+          },
+          {
+            x: x,
+            y: y_low,
+            name: 'Lower Bound',
+            type: 'scatter',
+            mode: 'lines',
+            fill: "tonexty",
+            fillcolor: "rgba(68, 68, 68, 0.3)",
+            line: {color: "transparent"}
+          },
+
+        ];
+
+
+      } else {
+        return []
+      }
     }
   },
 
   watch: {
 
-    selectedLocations: function() {
-
-    }
-
   },
 
   mounted() {
     this.date = new Date();
-    this.startDate = new Date(this.date - 14*24*60*60*1000).toISOString()
+    this.startDate = new Date(this.date - 7*24*60*60*1000).toISOString()
     this.loadData('https://api.openaq.org/v1/countries?limit=10000', this.loadCountries);
   },
 
@@ -194,9 +265,7 @@ var app = new Vue({
     locations: [],
     location: '',
     parameter: 'pm25',
-    AQdata: [],
-    traces: [],
-    selectedLocations: []
+    traces: []
   }
 
 });

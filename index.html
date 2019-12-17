@@ -34,23 +34,24 @@
 
       <div v-if="locations.length > 0">
 
-        <!--
-        <select v-model="location" @change="requestParameterData">
+        <select v-model="location">
         <option disabled value="">Select a location</option>
           <option v-for="location in locations" :value="location">
             {{ location.location }}
           </option>
         </select>
-        -->
 
+
+        <!--
         <ul>
           <li v-for="location in locations" style="list-style-type: none;">
-            <input type="checkbox" :id="location" :value="location" v-model="selectedLocations" @change="requestAQData(location)">
+            <input type="checkbox" :id="location" :value="location" v-model="selectedLocations">
             <label :for="location">{{location.location}}</label>
           </li>
         </ul>
+        -->
 
-        <div v-if="selectedLocations.length > 0">
+        <div v-if="location !== ''">
 
           <p>
             Showing
@@ -60,14 +61,12 @@
               {{ parameter }}
                 </option>
             </select>
-             data for {{ selectedLocations.map(e => e.location) }}
+             data for {{ location.location }}
           </p>
 
-          <div v-if="AQdata.length > 0">
-            <!--
-            {{AQdata}}
-            -->
-            <graph :traces="traces" :layout="layout"></graph>
+          <div v-if="traces.length > 0">
+
+            <graph :traces="[...traces.filter(e => e.name == location.location), ...backgroundTrace]" :layout="layout"></graph>
 
           </div>
 
