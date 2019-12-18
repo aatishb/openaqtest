@@ -10,22 +10,30 @@ Vue.component('graph', {
     makeGraph() {
       console.log('updating graph');
 
-      let smoothedTraces = [];
+      if (this.smoothing) {
 
-      for (let trace of this.traces) {
-        smoothedTraces.push({
-          x: trace.x,
-          y: this.smooth(trace.y),
-          name: trace.name,
-          type: trace.type,
-          mode: trace.mode,
-          fill: trace.fill,
-          fillcolor: trace.fillcolor,
-          line: trace.line
-        });
+        let smoothedTraces = [];
+
+        for (let trace of this.traces) {
+          smoothedTraces.push({
+            x: trace.x,
+            y: this.smooth(trace.y),
+            name: trace.name,
+            type: trace.type,
+            mode: trace.mode,
+            fill: trace.fill,
+            fillcolor: trace.fillcolor,
+            line: trace.line
+          });
+        }
+
+        Plotly.newPlot(this.$refs.graph, smoothedTraces, this.layout);
+
+      } else {
+        Plotly.newPlot(this.$refs.graph, this.traces, this.layout);
       }
 
-      Plotly.newPlot(this.$refs.graph, smoothedTraces, this.layout);
+
     },
 
     smooth(arr) {
@@ -103,7 +111,7 @@ var app = new Vue({
 
       this.locations = JSON.parse(data).results
         .filter(e => e.location !== undefined)
-        .filter(e => Math.abs(new Date(e.lastUpdated) - this.date) < 7*24*60*60*1000)
+        .filter(e => Math.abs(new Date(e.lastUpdated) - this.date) <= 7 * this.duration)
         .sort((a,b) => a.location > b.location);
 
       for (let location of this.locations) {
@@ -183,7 +191,23 @@ var app = new Vue({
 
       return {
         xaxis: {
-          title: 'Date / Time',
+          title: 'Date',
+          rangeselector: {
+            buttons: [
+              {
+                count: 7,
+                label: 'previous week',
+                step: 'day',
+                stepmode: 'backward'
+              },
+              {
+                count: 1,
+                label: 'previous day',
+                step: 'day',
+                stepmode: 'backward'
+              }
+              ]
+            }
         },
 
         yaxis: {
@@ -201,7 +225,7 @@ var app = new Vue({
       };
     },
 
-    backgroundTrace() {
+    backgroundTraces() {
 
       let allTrace = {};
 
@@ -284,6 +308,37 @@ var app = new Vue({
       } else {
         return []
       }
+    },
+
+    currentTraces() {
+      return this.traces.filter(e => e.name == this.location.location);
+    },
+
+    timeTrace() {
+      if (this.currentTraces.length > 0) {
+
+        let trace = this.currentTraces[0];
+
+        let x = [];
+        let y = [];
+
+        for (let hour = 0; hour < 24; hour++) {
+
+          let yo = trace.y.filter((e,i) => new Date(trace.x[i]).getHours() == hour);
+          let n = yo.length;
+          if (n > 0) {
+            x.push(hour);
+            let avg = yo.reduce((a,b) => a + b)/n;
+            y.push(avg);
+          }
+        }
+
+        return {
+          x: x,
+          y: y
+        }
+
+      }
     }
   },
 
@@ -303,13 +358,14 @@ var app = new Vue({
 
   mounted() {
     this.date = new Date();
-    this.startDate = new Date(this.date - 7*24*60*60*1000).toISOString()
+    this.startDate = new Date(this.date - 7 * this.duration).toISOString()
     this.loadData('https://api.openaq.org/v1/countries?limit=10000', this.loadCountries);
   },
 
   data: {
     date: NaN,
-    startData: NaN,
+    startDate: NaN,
+    duration: 24*60*60*1000,
     countries: [],
     country: '',
     cities: [],

@@ -69,7 +69,29 @@
 
           <div v-if="traces.length > 0">
 
-            <graph :traces="[ ...backgroundTrace, ...traces.filter(e => e.name == location.location)]" :layout="layout" :smoothing="smoothing"></graph>
+            <h2>Graph of recent air quality data</h2>
+            <graph :traces="[
+              ...backgroundTraces,
+              ...currentTraces
+            ]"
+            :layout="layout"
+            :smoothing="smoothing"></graph>
+
+            <h2>Histogram of recent air quality data</h2>
+
+            <graph :traces="[{
+              x: currentTraces.length > 0 ? currentTraces[0].y : [],
+              type: 'histogram',
+              histnorm: 'probability',
+              cumulative: {enabled: true},
+              xbins: {
+                size: 1,
+                start: 0.5
+              }
+            }]"></graph>
+
+
+            <graph :traces="[timeTrace]"></graph>
 
           </div>
         </div>
