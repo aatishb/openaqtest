@@ -83,6 +83,18 @@
               x: currentTraces.length > 0 ? currentTraces[0].y : [],
               type: 'histogram',
               histnorm: 'probability',
+              xbins: {
+                size: 10,
+                start: 5
+              }
+            }]"></graph>
+
+            <h2>Cumulative Histogram of recent air quality data</h2>
+
+            <graph :traces="[{
+              x: currentTraces.length > 0 ? currentTraces[0].y : [],
+              type: 'histogram',
+              histnorm: 'probability',
               cumulative: {enabled: true},
               xbins: {
                 size: 1,
@@ -90,6 +102,7 @@
               }
             }]"></graph>
 
+            <h2>Air Quality by Hour of Day</h2>
 
             <graph :traces="[timeTrace]"></graph>
 
