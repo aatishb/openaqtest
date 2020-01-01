@@ -8,31 +8,41 @@ Vue.component('graph', {
   methods: {
 
     makeGraph() {
-      console.log('updating graph');
 
-      if (this.smoothing) {
+      if (this.traces) {
 
-        let smoothedTraces = [];
+        if (this.smoothing) {
 
-        for (let trace of this.traces) {
-          smoothedTraces.push({
-            x: trace.x,
-            y: this.smooth(trace.y),
-            name: trace.name,
-            type: trace.type,
-            mode: trace.mode,
-            fill: trace.fill,
-            fillcolor: trace.fillcolor,
-            line: trace.line
-          });
+          let smoothedTraces = [];
+
+          for (let trace of this.traces) {
+            smoothedTraces.push({
+              x: trace.x,
+              y: this.smooth(trace.y),
+              name: trace.name,
+              type: trace.type,
+              mode: trace.mode,
+              fill: trace.fill,
+              fillcolor: trace.fillcolor,
+              line: trace.line
+            });
+          }
+
+          if (this.layout) {
+            Plotly.newPlot(this.$refs.graph, smoothedTraces, this.layout);
+          } else {
+            Plotly.newPlot(this.$refs.graph, smoothedTraces);
+          }
+
+        } else {
+          if (this.layout) {
+            Plotly.newPlot(this.$refs.graph, this.traces, this.layout);
+          } else {
+            Plotly.newPlot(this.$refs.graph, this.traces);
+          }
         }
 
-        Plotly.newPlot(this.$refs.graph, smoothedTraces, this.layout);
-
-      } else {
-        Plotly.newPlot(this.$refs.graph, this.traces, this.layout);
       }
-
 
     },
 
@@ -66,7 +76,6 @@ Vue.component('graph', {
 
 
 })
-
 
 // Sets up the main Vue instance
 
@@ -111,6 +120,7 @@ var app = new Vue({
 
       this.locations = JSON.parse(data).results
         .filter(e => e.location !== undefined)
+        .filter(e => e.city == this.city.name)
         .filter(e => Math.abs(new Date(e.lastUpdated) - this.date) <= 7 * this.duration)
         .sort((a,b) => a.location > b.location);
 
@@ -123,8 +133,10 @@ var app = new Vue({
     requestCityData() {
 
       this.traces = [];
+
       this.cities = [];
       this.city = '';
+
       this.locations = [];
       this.location = '';
 
@@ -134,6 +146,7 @@ var app = new Vue({
     requestLocationData() {
 
       this.traces = [];
+
       this.locations = [];
       this.location = '';
 
@@ -154,22 +167,21 @@ var app = new Vue({
 
     getAQData(data) {
 
-      let AQdata = JSON.parse(data).results
-        .filter(e => e.value >= 0);
+      let AQdata = JSON.parse(data).results.filter(e => e.value > 0);
 
       if (AQdata.length > 0) {
 
         let location = AQdata[0].location;
-        let myTrace = {
+
+        this.traces.push({
           x: AQdata.map(e => e.date.local),
           y: AQdata.map(e => e.value),
           name: location,
           type: 'scatter',
           mode: 'lines',
           line: {color: '#17BECF'}
-        };
+        });
 
-        this.traces.push(myTrace);
         console.log('downloaded data for ', location);
       }
 
@@ -180,6 +192,7 @@ var app = new Vue({
   computed: {
 
     parameters() {
+
       if (this.location !== '') {
         return this.location.parameters;
       } else {
@@ -187,8 +200,10 @@ var app = new Vue({
       }
     },
 
+
     layout() {
 
+      // air quality graph layout
       return {
         xaxis: {
           title: 'Date',
@@ -225,14 +240,20 @@ var app = new Vue({
       };
     },
 
+    // creates all the traces other than the primary trace
+    // such as the confidence interval, and the WHO limit
+
     backgroundTraces() {
+
+      // here we combine all data for the chosen parameter & location
+      // and use it to calculate a 95% confidence interval
+      // which we will use as a grey background in the graph
 
       let allTrace = {};
 
       if (this.traces.length > 0) {
         for (let trace of this.traces) {
 
-          // calculate standard deviation of traces
           let times = trace.x;
           let vals = trace.y;
 
@@ -272,6 +293,7 @@ var app = new Vue({
 
 
         return [
+          // WHO limit
           {
             x: x,
             y: this.parameter == 'pm25' ? x.map(e => 25) : [],
@@ -283,6 +305,8 @@ var app = new Vue({
             line: {color: "transparent"},
             hoverinfo: 'none'
           },
+
+          // upper limit of 95% confidence interval
           {
             x: x.filter((e,i) => n_arr[i] > 1),
             y: y_high.filter((e,i) => n_arr[i] > 1),
@@ -291,6 +315,8 @@ var app = new Vue({
             mode: 'lines',
             line: {color: "transparent"}
           },
+
+          // lower limit of 95% confidence interval
           {
             x: x.filter((e,i) => n_arr[i] > 1),
             y: y_low.filter((e,i) => n_arr[i] > 1),
