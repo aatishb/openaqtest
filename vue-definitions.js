@@ -102,7 +102,7 @@ var app = new Vue({
 
       this.countries = JSON.parse(data).results
         .filter(e => e.name !== undefined)
-        .filter(e => e.count > 20000)
+        .filter(e => e.count > 1000)
         .sort((a,b) => a.name > b.name);
 
     },
@@ -111,7 +111,7 @@ var app = new Vue({
 
       this.cities = JSON.parse(data).results
         .filter(e => e.name !== undefined)
-        .filter(e => e.count > 20000)
+        .filter(e => e.count > 1000)
         .sort((a,b) => a.name > b.name);
 
     },
